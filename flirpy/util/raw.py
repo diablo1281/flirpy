@@ -16,6 +16,9 @@ def raw2temp(raw, meta):
     Roughly ported from ThermImage: https://github.com/gtatters/Thermimage/blob/master/R/raw2temp.R
 
     """
+    
+    if meta.get('Camera Model','').startswith("WWP"):
+        return 0.04*raw - 273.15
 
     ATA1 = float(meta["Atmospheric Trans Alpha 1"])
     ATA2 = float(meta["Atmospheric Trans Alpha 2"])

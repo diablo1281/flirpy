@@ -1,12 +1,13 @@
+import logging
 import re
 import struct
+
 import numpy as np
-import sys
-import six
-import logging
 
 from flirpy.util.raw import raw2temp
+
 logger = logging.getLogger()
+
 
 class Fff:
 
@@ -57,7 +58,7 @@ class Fff:
 
         """
         s = struct.Struct("<HHH6xH2xH")
-        
+
         # 0x00: byte order
         # 0x01: width
         # 0x02: height
@@ -78,21 +79,21 @@ class Fff:
 
         # Quick sanity check, later entries are
         # (width-1) and (height-1)
-        assert res[1] == res[3]+1
-        assert res[2] == res[4]+1
-        
-        return (self.width, self.height)
+        assert res[1] == res[3] + 1
+        assert res[2] == res[4] + 1
+
+        return self.width, self.height
 
     def _find_data_offset_simple(self, width, height):
-        search = struct.pack("<H", width-1)\
-                    + b"\x00\x00"\
-                    + struct.pack("<H", height-1)
+        search = struct.pack("<H", width - 1) \
+                 + b"\x00\x00" \
+                 + struct.pack("<H", height - 1)
 
         valid = re.compile(search)
         res = valid.search(self.data)
 
         self.data_offset = res.end() + 14
-        
+
     def _find_data_offset(self, endianness="be"):
         """
         Analyses the file to locate the offset of the
@@ -142,9 +143,9 @@ class Fff:
         # 0x1c - int32u checksum: 0 for no checksum
 
         if endianness == "le":
-            s = struct.Struct("<HHIIIIIII")   
+            s = struct.Struct("<HHIIIIIII")
         else:
-            s = struct.Struct(">HHIIIIIII") 
+            s = struct.Struct(">HHIIIIIII")
         res = s.unpack_from(self.data, record_offset)
 
         record_type = res[0]
@@ -161,14 +162,14 @@ class Fff:
         self.data_size = res[5]
 
         return self.data_offset
-    
+
     def get_radiometric_image(self, dtype='float', meta=None):
 
         if meta is None:
             image = raw2temp(self.get_image(), self.meta)
         else:
             image = raw2temp(self.get_image(), meta)
-        
+
         if dtype == 'uint16':
             image += 273.15
             image /= 0.04
@@ -178,9 +179,10 @@ class Fff:
 
     def get_image(self):
         if self.image is None:
-            count = self.height*self.width
-            self.image = np.frombuffer(self.data, offset=self.data_offset+0x20, dtype='uint16', count=count).reshape((self.height, self.width))
-        
+            count = self.height * self.width
+            self.image = np.frombuffer(self.data, offset=self.data_offset + 0x20, dtype='uint16', count=count).reshape(
+                (self.height, self.width))
+
         return self.image
 
     def get_meta(self):
@@ -192,13 +194,13 @@ class Fff:
         but this allows us to seek directly into FFFs without
         calling Exiftool externally.
         """
-        
+
         meta = {}
 
         # 0x20 to skip the header info
-        header_offset = self.data_offset+0x20+2*self.height*self.width
+        header_offset = self.data_offset + 0x20 + 2 * self.height * self.width
 
-        s = struct.Struct("<HHH6xII12x8f24x3f12x5f12x8f36x")    
+        s = struct.Struct("<HHH6xII12x8f24x3f12x5f12x8f36x")
         res = s.unpack_from(self.data, header_offset)
 
         try:
@@ -222,9 +224,9 @@ class Fff:
         except:
             logger.warn("Failed to extract radiometric information")
             logger.warn("String: ", res)
-        
+
         s = struct.Struct("<8f32s16s16s16s32s16s16sf")
-        res = s.unpack_from(self.data, header_offset+0x90)
+        res = s.unpack_from(self.data, header_offset + 0x90)
         try:
             meta["Camera Temperature Range Max"] = res[0]
             meta["Camera Temperature Range Min"] = res[1]
@@ -237,10 +239,10 @@ class Fff:
         except UnicodeDecodeError:
             logger.warn("Failed to extract camera temperature information")
             logger.warn("String: ", res)
-        
+
         s = struct.Struct("<32s16s16s16s32s16s16s")
-        res = s.unpack_from(self.data, header_offset+0xd4)
-        
+        res = s.unpack_from(self.data, header_offset + 0xd4)
+
         try:
             meta["Camera Model"] = res[0].decode()
             meta["Camera Part Number"] = res[1].decode()
@@ -249,47 +251,47 @@ class Fff:
         except UnicodeDecodeError:
             logger.warn("Failed to extract camera information")
             logger.warn("String: ", res)
-        
+
         s = struct.Struct("<32s16s16s4xf")
-        res = s.unpack_from(self.data, header_offset+0x170)
+        res = s.unpack_from(self.data, header_offset + 0x170)
         try:
-            meta["Lens Model"] = res[0].decode()
-            meta["Lens Part Number"] = res[1].decode()
-            meta["Lens Serial Number"] = res[2].decode()
+            meta["Lens Model"] = res[0].decode(errors='replace')
+            meta["Lens Part Number"] = res[1].decode(errors='replace')
+            meta["Lens Serial Number"] = res[2].decode(errors='replace')
             meta["Field of View"] = res[3]
         except UnicodeDecodeError:
             logger.warn("Failed to extract lens details")
             logger.warn("String", res)
-        
+
         s = struct.Struct("<if")
-        res = s.unpack_from(self.data, header_offset+0x308)
+        res = s.unpack_from(self.data, header_offset + 0x308)
         try:
             meta["Planck O"] = res[0]
             meta["Planck R2"] = res[1]
         except UnicodeDecodeError:
             logger.warn("Failed to extract Planck O or R2")
             logger.warn("String", res)
-        
+
         s = struct.Struct("<HH")
-        res = s.unpack_from(self.data, header_offset+0x310)
+        res = s.unpack_from(self.data, header_offset + 0x310)
         try:
             meta["Raw Value Range Minimum"] = res[0]
             meta["Raw Value Range Maximum"] = res[1]
         except UnicodeDecodeError:
             logger.warn("Failed to extract raw value information")
             logger.warn("String", res)
-        
+
         s = struct.Struct("<H2xH")
-        res = s.unpack_from(self.data, header_offset+0x338)
+        res = s.unpack_from(self.data, header_offset + 0x338)
         try:
             meta["Raw Value Range Median"] = res[0]
             meta["Raw Value Range Range"] = res[1]
         except UnicodeDecodeError:
             logger.warn("Failed to extract raw value information")
             logger.warn("String", res)
-        
+
         return meta
-    
+
     def get_gps(self):
         valid = re.compile("[0-9]{4}[NS]\x00[EW]\x00".encode())
 

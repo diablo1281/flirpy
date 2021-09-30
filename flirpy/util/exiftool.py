@@ -46,15 +46,21 @@ class Exiftool:
         cmd = [self.path]
         cmd.append("-r")
         cmd.append("-overwrite_original")
-        cmd.append("-tagsfromfile")
+        cmd.append("-addtagsfromfile")
         cmd.append(filemask)
         cmd.append("-ext")
         cmd.append(ext)
+        tagsToCopy = ["gpsLatitude", "gpsLongitude", "gpsLatitudeRef", "gpsLongitudeRef", "gpsAltitude", "gpsSpeed", "gpsSpeedRef"]
+        for x in tagsToCopy:
+            cmd.append(f"-{x}<{x}")
+        cmd.append("-gpsDateStamp<DateTimeOriginal")
+        cmd.append("-gpsTimeStamp<DateTimeOriginal")
         cmd.append(output_folder)
 
         logger.debug(" ".join(cmd))
 
-        res = subprocess.call(cmd, cwd=cwd, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        #res = subprocess.call(cmd, cwd=cwd, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        res = subprocess.call(cmd, cwd=cwd)
         return res
     
     def write_meta(self, filemask):
@@ -89,3 +95,8 @@ class Exiftool:
                 meta[key] = value
 
         return meta
+
+
+if __name__ == '__main__':
+    e = Exiftool()
+    e.copy_meta(folder='/home/pbenito/Escritorio/13-04-27-thermal.part00/raw/', output_folder='../radiometric')

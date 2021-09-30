@@ -143,22 +143,21 @@ class Splitter:
             logger.info("Splitting {} into {}".format(seq, folder))
             self._process_seq(seq, folder)
 
+            if self.split_filetypes:
+                filemask = os.path.join(folder, "raw", "frame_*.fff")
+                copy_filemask = os.path.normpath("./raw/%f.fff")
+                radiometric_folder = os.path.normpath("./radiometric")
+                preview_folder = os.path.normpath("./preview")
+            else:
+                filemask = os.path.join(folder, "frame_*.fff")
+                copy_filemask = os.path.normpath("%f.fff")
+                radiometric_folder = os.path.normpath("./")
+                preview_folder = os.path.normpath("./")
+
             # Batch export meta data
-            if self.export_meta:
-                logger.info("Extracting metadata")
-
-                if self.split_filetypes:
-                    filemask = os.path.join(folder, "raw", "frame_*.fff")
-                    copy_filemask = os.path.normpath("./raw/%f.fff")
-                    radiometric_folder = os.path.normpath("./radiometric")
-                    preview_folder = os.path.normpath("./preview")
-                else:
-                    filemask = os.path.join(folder, "frame_*.fff")
-                    copy_filemask = os.path.normpath("%f.fff")
-                    radiometric_folder = os.path.normpath("./")
-                    preview_folder = os.path.normpath("./")
-
-                self.exiftool.write_meta(filemask)
+            # if self.export_meta:
+            #     logger.info("Extracting metadata")
+            #     self.exiftool.write_meta(filemask)
 
             # Copy geotags
             if self.export_tiff:
@@ -212,7 +211,7 @@ class Splitter:
                 filename_tiff = os.path.join(output_subfolder, "frame_{0:06d}.tiff".format(self.frame_count))
                 filename_preview = os.path.join(output_subfolder, "frame_{:06d}.{}".format(self.frame_count, self.preview_format))
                 filename_meta = os.path.join(output_subfolder, "frame_{0:06d}.txt".format(self.frame_count))
-            
+
             if self.frame_count % self.step == 0:
 
                 if self.export_meta and self._check_overwrite(filename_fff):

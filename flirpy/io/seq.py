@@ -174,6 +174,7 @@ class Splitter:
         if not self.split_folders:
             if self.export_tiff:
                 logger.info("Copying tags to radiometric")
+                print("Adding metadata to tiff... ")
                 self.exiftool.copy_meta(folder, filemask=copy_filemask, output_folder=radiometric_folder, ext="tiff")
 
             if self.export_preview:

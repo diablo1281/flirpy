@@ -206,7 +206,7 @@ class Splitter:
 
         logger.debug("Processing {}".format(input_file))
 
-        for count, frame in enumerate(tqdm(Seq(input_file, self.height, self.width))):
+        for count, frame in enumerate(tqdm(Seq(input_file, self.height, self.width), desc=os.path.basename(input_file))):
 
             if frame.meta is None:
                 self.frame_count += 1

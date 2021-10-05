@@ -128,7 +128,7 @@ class Splitter:
 
         folders = []
 
-        for seq in tqdm(file_list):
+        for seq in file_list:
 
             if self.split_folders:
                 subfolder, _ = os.path.splitext(os.path.basename(seq))
@@ -158,15 +158,28 @@ class Splitter:
             #     logger.info("Extracting metadata")
             #     self.exiftool.write_meta(filemask)
 
-            # Copy geotags
+            # Copy geotags only if we split in different folders
+            if self.split_folders:
+                if self.export_tiff:
+                    logger.info("Copying tags to radiometric")
+                    self.exiftool.copy_meta(folder, filemask=copy_filemask, output_folder=radiometric_folder,
+                                            ext="tiff")
+
+                if self.export_preview:
+                    logger.info("Copying tags to preview")
+                    self.exiftool.copy_meta(folder, filemask=copy_filemask, output_folder=preview_folder,
+                                            ext=self.preview_format)
+
+        # If we do not split the folders, then copy the metadata just once..
+        if not self.split_folders:
             if self.export_tiff:
                 logger.info("Copying tags to radiometric")
                 self.exiftool.copy_meta(folder, filemask=copy_filemask, output_folder=radiometric_folder, ext="tiff")
 
             if self.export_preview:
                 logger.info("Copying tags to preview")
-                self.exiftool.copy_meta(folder, filemask=copy_filemask, output_folder=preview_folder,
-                                        ext=self.preview_format)
+            self.exiftool.copy_meta(folder, filemask=copy_filemask, output_folder=preview_folder,
+                                    ext=self.preview_format)
 
         return folders
 

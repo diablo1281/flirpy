@@ -178,8 +178,8 @@ class Splitter:
 
             if self.export_preview:
                 logger.info("Copying tags to preview")
-            self.exiftool.copy_meta(folder, filemask=copy_filemask, output_folder=preview_folder,
-                                    ext=self.preview_format)
+                self.exiftool.copy_meta(folder, filemask=copy_filemask, output_folder=preview_folder,
+                                        ext=self.preview_format)
 
         return folders
 

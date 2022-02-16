@@ -1,3 +1,4 @@
+import datetime
 import logging
 import re
 import struct
@@ -199,6 +200,7 @@ class Fff:
 
         # 0x20 to skip the header info
         header_offset = self.data_offset + 0x20 + 2 * self.height * self.width
+        print(header_offset)
 
         s = struct.Struct("<HHH6xII12x8f24x3f12x5f12x8f36x")
         res = s.unpack_from(self.data, header_offset)
@@ -290,10 +292,35 @@ class Fff:
             logger.warn("Failed to extract raw value information")
             logger.warn("String", res)
 
+        # Datetime with milliseconds
+        s = struct.Struct("<IHh")
+        res = s.unpack_from(self.data, header_offset + 0x384)
+        tm = res[0]  # Unix Timestamp
+        ss = res[1]  # Milliseconds
+        tz = res[2]  # Timezone
+        timestamp = datetime.datetime.utcfromtimestamp(tm)
+        meta["DateTime Original"] = f"{timestamp.isoformat()}.{ss}"
+
+        # GPS
+        # Kudos!
+        # https://github.com/exiftool/exiftool/blob/537cba56936c21b729aeed404b117e31c3c6fed0/lib/Image/ExifTool/FLIR.pm#L611
+        s = struct.Struct("<II2s2s4xddf")
+        res = s.unpack_from(self.data, header_offset + 0x7ec)
+        meta['gspValid'] = res[0]
+        meta['gpsVersion'] = res[1]
+        meta['gpsLatitudeRef'] = res[2].decode()
+        meta['gpsLongitudeRef'] = res[3].decode()
+        meta['gpsLatitude'] = res[4]
+        meta['gpsLongitude'] = res[5]
+        meta['gpsAltitude'] = res[6]
+
+
+
         return meta
 
     def get_gps(self):
         valid = re.compile("[0-9]{4}[NS]\x00[EW]\x00".encode())
+        b"^\x7f\x2e\x21\x00\x8b\x46\x49\x18\xaf\xb1\xde\x70\x9a\x74\xf6\xf5"
 
         res = valid.search(self.data)
         start_pos = res.start()

@@ -10,3 +10,4 @@ pyusb
 pyftdi
 natsort
 Pillow
+piexif

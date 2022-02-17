@@ -200,7 +200,6 @@ class Fff:
 
         # 0x20 to skip the header info
         header_offset = self.data_offset + 0x20 + 2 * self.height * self.width
-        print(header_offset)
 
         s = struct.Struct("<HHH6xII12x8f24x3f12x5f12x8f36x")
         res = s.unpack_from(self.data, header_offset)
@@ -298,8 +297,9 @@ class Fff:
         tm = res[0]  # Unix Timestamp
         ss = res[1]  # Milliseconds
         tz = res[2]  # Timezone
-        timestamp = datetime.datetime.utcfromtimestamp(tm)
-        meta["DateTime Original"] = f"{timestamp.isoformat()}.{ss}"
+        # Format: YYYY:MM:DD HH:mm:ss.000
+        timestamp = datetime.datetime.utcfromtimestamp(tm).isoformat().replace('T', ' ').replace('-',':')
+        meta["DateTime Original"] = f"{timestamp}.{ss}"
 
         # GPS
         # Kudos!
@@ -308,8 +308,8 @@ class Fff:
         res = s.unpack_from(self.data, header_offset + 0x7ec)
         meta['gspValid'] = res[0]
         meta['gpsVersion'] = res[1]
-        meta['gpsLatitudeRef'] = res[2].decode()
-        meta['gpsLongitudeRef'] = res[3].decode()
+        meta['gpsLatitudeRef'] = res[2].decode().rstrip('\x00')
+        meta['gpsLongitudeRef'] = res[3].decode().rstrip('\x00')
         meta['gpsLatitude'] = res[4]
         meta['gpsLongitude'] = res[5]
         meta['gpsAltitude'] = res[6]

@@ -5,6 +5,8 @@ import re
 import tqdm
 from PIL import Image
 from tqdm.autonotebook import tqdm
+import piexif
+from fractions import Fraction
 
 try:
     from pathlib import Path
@@ -172,10 +174,10 @@ class Splitter:
 
         # If we do not split the folders, then copy the metadata just once..
         if not self.split_folders:
-            if self.export_tiff:
-                logger.info("Copying tags to radiometric")
-                print("Adding metadata to tiff... ")
-                self.exiftool.copy_meta(folder, filemask=copy_filemask, output_folder=radiometric_folder, ext="tiff")
+            # if self.export_tiff:
+            #     logger.info("Copying tags to radiometric")
+            #     print("Adding metadata to tiff... ")
+            #     self.exiftool.copy_meta(folder, filemask=copy_filemask, output_folder=radiometric_folder, ext="tiff")
 
             if self.export_preview:
                 logger.info("Copying tags to preview")
@@ -184,9 +186,59 @@ class Splitter:
 
         return folders
 
-    def _write_tiff(self, filename, data):
+    def _write_tiff(self, filename, data, metadata):
         logger.debug("Writing {}", filename)
-        Image.fromarray(data.astype("uint16")).save(filename)
+
+
+        def decdeg2dms(dd):
+            mnt, sec = divmod(dd * 3600, 60)
+            deg, mnt = divmod(mnt, 60)
+            return Fraction(deg), Fraction(mnt), Fraction(str(round(sec, 8)))
+
+
+        zeroth_ifd = {
+                      piexif.ImageIFD.Software: u"Flirpy modified by Pablo Benito Cia"
+                      }
+        exif_ifd = {
+            piexif.ExifIFD.DateTimeOriginal: metadata.get('DateTime Original') + "Z",
+        }
+
+        # Date & Time stamps to Fraction
+        gpsDateStamp, gpsTimeStamp = metadata.get('DateTime Original').split(' ', maxsplit=2)
+        gpsHour, gpsMinute, gpsSeconds = gpsTimeStamp.split(':', maxsplit=3)
+        gpsHour = Fraction(gpsHour)
+        gpsMinute = Fraction(gpsMinute)
+        gpsSeconds = Fraction(gpsSeconds)
+
+        # GPS. Must be converted to Degrees, Hours and Minutes Fractions
+        gpsLatitudeHour, gpsLatitudeMin, gpsLatitudeSec = decdeg2dms(metadata.get('gpsLatitude'))
+        gpsLongitudeHour, gpsLongitudeMin, gpsLongitudeSec = decdeg2dms(metadata.get('gpsLongitude'))
+        gpsAltitude = Fraction(str(round(metadata.get('gpsAltitude'), 5)))
+
+        gps_ifd = {
+            piexif.GPSIFD.GPSVersionID: (metadata.get('gpsVersion'), 0, 0, 0),
+            piexif.GPSIFD.GPSDateStamp: gpsDateStamp,
+            piexif.GPSIFD.GPSTimeStamp: [(gpsHour.numerator, gpsHour.denominator),
+                                         (gpsMinute.numerator, gpsMinute.denominator),
+                                         (gpsSeconds.numerator, gpsSeconds.denominator)],
+            piexif.GPSIFD.GPSLatitudeRef: metadata.get('gpsLatitudeRef'),
+            piexif.GPSIFD.GPSLongitudeRef: metadata.get('gpsLongitudeRef'),
+            piexif.GPSIFD.GPSLatitude: [(gpsLatitudeHour.numerator, gpsLatitudeHour.denominator),
+                                        (gpsLatitudeMin.numerator, gpsLatitudeMin.denominator),
+                                        (gpsLatitudeSec.numerator, gpsLatitudeSec.denominator)],
+            piexif.GPSIFD.GPSLongitude: [(gpsLongitudeHour.numerator, gpsLongitudeHour.denominator),
+                                         (gpsLongitudeMin.numerator, gpsLongitudeMin.denominator),
+                                         (gpsLongitudeSec.numerator, gpsLongitudeSec.denominator)
+                                         ],
+            piexif.GPSIFD.GPSAltitude: [gpsAltitude.numerator, gpsAltitude.denominator]
+        }
+
+        exif_dict = {"0th": zeroth_ifd,
+                     "Exif": exif_ifd,
+                     "GPS": gps_ifd}
+        exif_bytes = piexif.dump(exif_dict)
+
+        Image.fromarray(data.astype("uint16")).save(filename, exif = exif_bytes)
 
     def _write_preview(self, filename, data):
         drange = data.max() - data.min()
@@ -252,8 +304,9 @@ class Splitter:
                         image /= 0.04  # Standard FLIR scale factor
                     else:
                         image = frame.get_image()
+                        meta = frame.meta
 
-                    self._write_tiff(filename_tiff, image)
+                    self._write_tiff(filename_tiff, image, metadata=meta)
 
                 # Export preview frame (crushed to 8-bit)
                 if self.export_preview and self._check_overwrite(filename_preview):

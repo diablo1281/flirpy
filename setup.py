@@ -12,7 +12,7 @@ if platform.machine() in ["arm", "aarch64", "aarch64_be", "armv8b", "armv8l"]:
            available as a wheel yet so you will need to build from scratch. If you're running \
            aarch64, you can try 'pip install opencv-python-aarch64' but this is not officially supported.")
 else:
-    install_requires=['pyserial', 'opencv-python-headless', 'tqdm', 'numpy', 'pyudev', 'psutil', 'natsort', 'libusb', 'pyusb', 'pyftdi', 'Pillow']
+    install_requires=['pyserial', 'opencv-python-headless', 'tqdm', 'numpy', 'pyudev', 'psutil', 'natsort', 'libusb', 'pyusb', 'pyftdi', 'Pillow>=9.0.1', 'piexif']
 
 __packagename__ = "flirpy"
 

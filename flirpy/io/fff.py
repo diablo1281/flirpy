@@ -292,14 +292,14 @@ class Fff:
             logger.warn("String", res)
 
         # Datetime with milliseconds
-        s = struct.Struct("<IHh")
+        s = struct.Struct("<IIh")
         res = s.unpack_from(self.data, header_offset + 0x384)
         tm = res[0]  # Unix Timestamp
-        ss = res[1]  # Milliseconds
+        ss = res[1] & 0xFFFF # Milliseconds
         tz = res[2]  # Timezone
         # Format: YYYY:MM:DD HH:mm:ss.000
         timestamp = datetime.datetime.utcfromtimestamp(tm).isoformat().replace('T', ' ').replace('-',':')
-        meta["DateTime Original"] = f"{timestamp}.{ss}"
+        meta["DateTime Original"] = f"{timestamp}.{ss:03d}"
 
         # GPS
         # Kudos!
